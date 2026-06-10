@@ -1,0 +1,178 @@
+// prisma/schema.prisma
+// ORMS — Ordinance and Resolution Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  name            String
+  email           String    @unique
+  password        String
+  role            String    @default("Staff")
+  departmentId    Int?
+  isActive        Boolean   @default(true)
+  emailVerifiedAt DateTime?
+  rememberToken   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  department          Department?  @relation(fields: [departmentId], references: [id])
+  createdOrdinances   Ordinance[]  @relation("OrdinanceCreator")
+  updatedOrdinances   Ordinance[]  @relation("OrdinanceUpdater")
+  createdResolutions  Resolution[] @relation("ResolutionCreator")
+  updatedResolutions  Resolution[] @relation("ResolutionUpdater")
+  uploadedDocuments   Document[]   @relation("DocumentUploader")
+  approvedDocuments   Document[]   @relation("DocumentApprover")
+  auditLogs           AuditLog[]
+
+  @@index([isActive, role])
+  @@map("users")
+}
+
+model Department {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  ordinances  Ordinance[]
+  resolutions Resolution[]
+  documents   Document[]
+
+  @@index([isActive, name])
+  @@map("departments")
+}
+
+model Ordinance {
+  id                Int      @id @default(autoincrement())
+  ordinanceNumber   String   @unique
+  title             String
+  year              Int
+  who               String?
+  what              String?
+  when              DateTime?
+  where             String?
+  why               String?
+  how               String?
+  approvalAuthority String?
+  departmentId      Int
+  status            String   @default("active")
+  summary           String?
+  notes             String?
+  createdBy         Int
+  updatedBy         Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  department  Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  creator     User       @relation("OrdinanceCreator", fields: [createdBy], references: [id])
+  updater     User       @relation("OrdinanceUpdater", fields: [updatedBy], references: [id])
+  documents   Document[]
+
+
+  @@index([year, status])
+  @@index([departmentId, status])
+  @@index([ordinanceNumber, year])
+  @@map("ordinances")
+}
+
+model Resolution {
+  id                      Int      @id @default(autoincrement())
+  resolutionNumber        String
+  title                   String
+  year                    Int
+  who                     String?
+  what                    String?
+  when                    DateTime?
+  where                   String?
+  why                     String?
+  how                     String?
+  approvingBody           String?
+  responsibleDepartmentId Int
+  status                  String   @default("draft")
+  summary                 String?
+  feedback                String?
+  createdBy               Int
+  updatedBy               Int
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  responsibleDepartment Department @relation(fields: [responsibleDepartmentId], references: [id])
+  creator               User       @relation("ResolutionCreator", fields: [createdBy], references: [id])
+  updater               User       @relation("ResolutionUpdater", fields: [updatedBy], references: [id])
+  documents             Document[]
+
+
+  @@index([year, status])
+  @@index([responsibleDepartmentId, status])
+  @@index([status, createdAt])
+  @@map("resolutions")
+}
+
+model Document {
+  id               Int      @id @default(autoincrement())
+  filename         String
+  filePath         String
+  fileSize         Int
+  mimeType         String
+  documentType     String?
+  title            String?
+  description      String?
+  version          Int      @default(1)
+  isLatestVersion  Boolean  @default(true)
+  remarks          String?
+  departmentId     Int?
+  ordinanceId      Int?
+  resolutionId     Int?
+  parentDocumentId Int?
+  uploadedBy       Int
+  approvedBy       Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  department     Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  ordinance      Ordinance?  @relation(fields: [ordinanceId], references: [id], onDelete: SetNull)
+  resolution     Resolution? @relation(fields: [resolutionId], references: [id], onDelete: SetNull)
+  parentDocument Document?   @relation("DocumentVersions", fields: [parentDocumentId], references: [id], onDelete: SetNull)
+  childDocuments Document[]  @relation("DocumentVersions")
+  uploader       User        @relation("DocumentUploader", fields: [uploadedBy], references: [id], onDelete: Cascade)
+  approver       User?       @relation("DocumentApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+
+
+  @@index([ordinanceId, createdAt])
+  @@index([departmentId, createdAt])
+  @@index([documentType])
+  @@index([isLatestVersion])
+  @@map("documents")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int?
+  action      String
+  tableName   String
+  recordId    Int
+  oldValues   String?
+  newValues   String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tableName, recordId])
+  @@index([userId])
+  @@map("audit_logs")
+}
