@@ -1,10 +1,21 @@
 // Shared TypeScript types for ORMS
 
-export type Role = 'Administrator' | 'Department_Head' | 'Staff'
+export type Role = 'Administrator' | 'Department_Head' | 'Staff' | 'Vice_Mayor' | 'Mayor'
 
 export type OrdinanceStatus = 'active' | 'inactive'
 
-export type ResolutionStatus = 'draft' | 'pending_approval' | 'active' | 'inactive' | 'rejected'
+// Resolution lifecycle:
+//   draft → in_hearings → pending_vice_mayor → pending_mayor → active
+// Vice Mayor may send back (rejected → resubmittable); a Mayor veto is terminal (vetoed).
+export type ResolutionStatus =
+  | 'draft'
+  | 'in_hearings'
+  | 'pending_vice_mayor'
+  | 'pending_mayor'
+  | 'active'
+  | 'inactive'
+  | 'rejected'
+  | 'vetoed'
 
 export interface SessionPayload {
   userId: number

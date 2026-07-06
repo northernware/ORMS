@@ -30,6 +30,7 @@ model User {
   updatedResolutions  Resolution[] @relation("ResolutionUpdater")
   uploadedDocuments   Document[]   @relation("DocumentUploader")
   approvedDocuments   Document[]   @relation("DocumentApprover")
+  recordedHearings    Hearing[]    @relation("HearingRecorder")
   auditLogs           AuditLog[]
 
   @@index([isActive, role])
@@ -103,6 +104,7 @@ model Resolution {
   status                  String   @default("draft")
   summary                 String?
   feedback                String?
+  hearingCycle            Int      @default(1)
   createdBy               Int
   updatedBy               Int
   createdAt               DateTime @default(now())
@@ -112,12 +114,33 @@ model Resolution {
   creator               User       @relation("ResolutionCreator", fields: [createdBy], references: [id])
   updater               User       @relation("ResolutionUpdater", fields: [updatedBy], references: [id])
   documents             Document[]
+  hearings              Hearing[]
 
 
   @@index([year, status])
   @@index([responsibleDepartmentId, status])
   @@index([status, createdAt])
   @@map("resolutions")
+}
+
+model Hearing {
+  id            Int      @id @default(autoincrement())
+  resolutionId  Int
+  cycle         Int      @default(1)
+  hearingNumber Int
+  heldAt        DateTime?
+  minutes       String?
+  notes         String?
+  recordedBy    Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  resolution Resolution @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
+  recorder   User       @relation("HearingRecorder", fields: [recordedBy], references: [id])
+
+  @@unique([resolutionId, cycle, hearingNumber])
+  @@index([resolutionId, cycle])
+  @@map("hearings")
 }
 
 model Document {

@@ -14,12 +14,27 @@ export const resolutionCreateSchema = z.object({
   how: z.string().nullable().optional(),
   approvingBody: z.string().max(255).nullable().optional(),
   responsibleDepartmentId: z.coerce.number().int().positive('Department is required'),
-  status: z.enum(['draft', 'pending_approval', 'active', 'inactive', 'rejected']).default('draft'),
+  status: z
+    .enum(['draft', 'in_hearings', 'pending_vice_mayor', 'pending_mayor', 'active', 'inactive', 'rejected', 'vetoed'])
+    .default('draft'),
   summary: z.string().nullable().optional(),
   feedback: z.string().nullable().optional(),
 })
 
 export const resolutionUpdateSchema = resolutionCreateSchema.partial()
 
+// Recording a hearing (reading) during the in_hearings stage.
+export const hearingCreateSchema = z.object({
+  heldAt: z.coerce.date().nullable().optional(),
+  minutes: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+})
+
+// Rejection / veto reason supplied by Vice Mayor or Mayor.
+export const decisionSchema = z.object({
+  reason: z.string().max(1000).nullable().optional(),
+})
+
 export type ResolutionCreateInput = z.infer<typeof resolutionCreateSchema>
 export type ResolutionUpdateInput = z.infer<typeof resolutionUpdateSchema>
+export type HearingCreateInput = z.infer<typeof hearingCreateSchema>
