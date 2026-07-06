@@ -106,6 +106,32 @@ async function main() {
     },
   })
 
+  await prisma.user.upsert({
+    where: { email: 'vicemayor@orms.gov' },
+    update: { role: 'Vice_Mayor' },
+    create: {
+      name: 'Vice Mayor',
+      email: 'vicemayor@orms.gov',
+      password: hashedPassword,
+      role: 'Vice_Mayor',
+      departmentId: adminDept.id,
+      isActive: true,
+    },
+  })
+
+  await prisma.user.upsert({
+    where: { email: 'mayor@orms.gov' },
+    update: { role: 'Mayor' },
+    create: {
+      name: 'Mayor',
+      email: 'mayor@orms.gov',
+      password: hashedPassword,
+      role: 'Mayor',
+      departmentId: adminDept.id,
+      isActive: true,
+    },
+  })
+
   console.log('✅ Users seeded')
 
   // Seed sample ordinances
@@ -211,7 +237,7 @@ async function main() {
       how: 'Phased construction and rehabilitation projects',
       approvingBody: 'Municipal Council',
       responsibleDepartmentId: engrDept.id,
-      status: 'pending_approval',
+      status: 'pending_vice_mayor',
       summary: 'Proposes a five-year plan for infrastructure development and rehabilitation.',
       createdBy: deptHead.id,
       updatedBy: deptHead.id,
@@ -256,9 +282,11 @@ async function main() {
   console.log('🎉 Database seeding complete!')
   console.log('')
   console.log('📋 Login credentials:')
-  console.log('   Admin:     admin@orms.gov / password')
-  console.log('   Dept Head: head@orms.gov  / password')
-  console.log('   Staff:     staff@orms.gov / password')
+  console.log('   Admin:     admin@orms.gov      / password')
+  console.log('   Dept Head: head@orms.gov       / password')
+  console.log('   Staff:     staff@orms.gov      / password')
+  console.log('   Vice Mayor: vicemayor@orms.gov / password')
+  console.log('   Mayor:     mayor@orms.gov      / password')
 }
 
 main()

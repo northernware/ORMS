@@ -7,17 +7,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const body = await request.json().catch(() => ({}))
 
   try {
-    const resolution = await ResolutionService.reject(Number(id), session, body.reason)
-    return NextResponse.json({ data: resolution, message: 'Resolution rejected.' })
+    const resolution = await ResolutionService.mayorApprove(
+      Number(id),
+      session,
+      request.headers.get('x-forwarded-for') ?? undefined,
+      request.headers.get('user-agent') ?? undefined
+    )
+    return NextResponse.json({ data: resolution, message: 'Approved by Mayor. Resolution is now active.' })
   } catch (e: any) {
-    const statusMap: Record<string, number> = {
-      NOT_FOUND: 404,
-      FORBIDDEN: 403,
-      INVALID_STATUS: 422,
-    }
+    const statusMap: Record<string, number> = { NOT_FOUND: 404, FORBIDDEN: 403, INVALID_STATUS: 422 }
     return NextResponse.json({ error: e.message }, { status: statusMap[e.message] ?? 500 })
   }
 }

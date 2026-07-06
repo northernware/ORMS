@@ -52,16 +52,16 @@ export default async function DashboardPage() {
           <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4">Ordinances (Last 5 Years)</h3>
           <div className="h-64 flex items-end gap-4">
             {ordinancesByYear.map((stat) => (
-              <div key={stat.year} className="flex-1 flex flex-col items-center gap-2">
-                <div 
-                  className="w-full bg-sky-500/20 dark:bg-sky-500/30 rounded-t-sm border-t-2 border-sky-500 dark:border-sky-400 relative group"
-                  style={{ height: `${Math.max((stat.total / Math.max(...ordinancesByYear.map(s => s.total))) * 100, 5)}%` }}
+              <div key={stat.year} className="flex-1 h-full flex flex-col items-center justify-end gap-2">
+                <div
+                  className="w-full bg-sky-100 border-t-2 border-sky-600 relative group"
+                  style={{ height: `${Math.max((stat.total / Math.max(...ordinancesByYear.map(s => s.total))) * 100, 4)}%` }}
                 >
-                  <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-xs py-1 px-2 rounded transition-opacity">
+                  <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white font-mono text-xs py-1 px-2 rounded-[2px] transition-opacity">
                     {stat.total}
                   </div>
                 </div>
-                <span className="text-sm text-zinc-500 dark:text-zinc-400">{stat.year}</span>
+                <span className="font-mono text-xs text-zinc-500">{stat.year}</span>
               </div>
             ))}
           </div>
