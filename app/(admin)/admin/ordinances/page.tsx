@@ -42,7 +42,7 @@ export default async function OrdinancesPage({
       <DataTable columns={['Number', 'Title', 'Department', 'Year', 'Status', 'Date', 'Actions']}>
         {ordinances.map((ord: any) => (
           <DataTableRow key={ord.id}>
-            <DataTableCell className="font-medium">{ord.ordinanceNumber}</DataTableCell>
+            <DataTableCell className="font-mono text-[0.8rem] font-medium">{ord.ordinanceNumber}</DataTableCell>
             <DataTableCell>
               <div className="max-w-[300px] truncate" title={ord.title}>{ord.title}</div>
             </DataTableCell>

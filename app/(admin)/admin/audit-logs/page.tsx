@@ -49,17 +49,17 @@ export default async function AuditLogsPage({
       <DataTable columns={['Timestamp', 'User', 'Action', 'Record', 'IP Address']}>
         {logs.map((log) => (
           <DataTableRow key={log.id}>
-            <DataTableCell className="whitespace-nowrap text-zinc-500">{formatDateTime(log.createdAt)}</DataTableCell>
+            <DataTableCell className="whitespace-nowrap font-mono text-xs text-zinc-500">{formatDateTime(log.createdAt)}</DataTableCell>
             <DataTableCell>{log.user?.name ?? 'System'}</DataTableCell>
             <DataTableCell>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-[2px] font-mono text-[0.65rem] tracking-wide border border-zinc-200 bg-zinc-50 text-zinc-600">
                 {log.action}
               </span>
             </DataTableCell>
-            <DataTableCell className="text-zinc-600 dark:text-zinc-400">
+            <DataTableCell className="font-mono text-xs text-zinc-600">
               {log.tableName} #{log.recordId}
             </DataTableCell>
-            <DataTableCell className="text-zinc-500">{log.ipAddress ?? '—'}</DataTableCell>
+            <DataTableCell className="font-mono text-xs text-zinc-500">{log.ipAddress ?? '—'}</DataTableCell>
           </DataTableRow>
         ))}
         {logs.length === 0 && (

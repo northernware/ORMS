@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session'
 import { ResolutionService } from '@/lib/services/resolution.service'
 import { StatusBadge } from '@/app/components/StatusBadge'
 import { ResolutionActions } from '@/app/components/ResolutionActions'
+import { RoutingSlip } from '@/app/components/RoutingSlip'
 import { formatDate } from '@/lib/utils/format'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -48,14 +49,29 @@ export default async function ViewResolutionPage({
         </Link>
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <h2 className="font-mono text-2xl font-semibold tracking-tight text-zinc-900">
               {resolution.resolutionNumber}
             </h2>
             <StatusBadge status={resolution.status} />
           </div>
-          <p className="text-zinc-500 dark:text-zinc-400">{resolution.title}</p>
+          <p className="text-zinc-500">{resolution.title}</p>
         </div>
+        {resolution.status === 'active' && (
+          <span className="stamp-lg text-emerald-800 ml-auto hidden sm:inline-block">Enacted</span>
+        )}
+        {resolution.status === 'vetoed' && (
+          <span className="stamp-lg text-red-600 ml-auto hidden sm:inline-block">Vetoed</span>
+        )}
+        {resolution.status === 'rejected' && (
+          <span className="stamp-lg text-red-600 ml-auto hidden sm:inline-block">Returned</span>
+        )}
       </div>
+
+      <RoutingSlip
+        status={resolution.status}
+        hearingsHeld={hearingsThisCycle}
+        cycle={resolution.hearingCycle}
+      />
 
       {resolution.feedback && (resolution.status === 'rejected' || resolution.status === 'vetoed') && (
         <div className="glass-card p-4 border-l-4 border-l-red-500">

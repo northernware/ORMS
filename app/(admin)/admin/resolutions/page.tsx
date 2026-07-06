@@ -44,7 +44,7 @@ export default async function ResolutionsPage({
       <DataTable columns={['Number', 'Title', 'Department', 'Year', 'Status', 'Date', 'Actions']}>
         {resolutions.map((res: any) => (
           <DataTableRow key={res.id}>
-            <DataTableCell className="font-medium">{res.resolutionNumber}</DataTableCell>
+            <DataTableCell className="font-mono text-[0.8rem] font-medium">{res.resolutionNumber}</DataTableCell>
             <DataTableCell>
               <div className="max-w-[300px] truncate" title={res.title}>{res.title}</div>
             </DataTableCell>

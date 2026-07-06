@@ -1,68 +1,179 @@
 @import "tailwindcss";
 
-@theme {
-  --color-primary-50: #f0f9ff;
-  --color-primary-100: #e0f2fe;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
+/*
+ * ORMS — "The Municipal Register"
+ * Bond paper, iron-gall ink, rubber stamps. The interface is a well-kept
+ * civic ledger: paper ground, white sheets, ink actions, stamped statuses.
+ */
 
-  --color-surface-light: rgba(255, 255, 255, 0.7);
-  --color-surface-dark: rgba(24, 24, 27, 0.7);
+/* The register is a paper document — dark mode is retired. Scoping the dark
+   variant to a class that is never applied makes every existing `dark:`
+   utility inert without touching the markup. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Core material tokens */
+  --color-paper: #f6f5f0;
+  --color-sheet: #ffffff;
+  --color-ink: #232936;
+  --color-ink-faint: #6e7380;
+  --color-rule: #dedcd2;
+  --color-manila: #eeece3;
+  --color-seal: #963a2e;
+  --color-oath: #33604a;
+
+  /* Existing markup uses zinc for neutrals. Remap the ramp so every page
+     reads warm-paper at the light end and iron-gall ink at the dark end. */
+  --color-zinc-50: #f6f5f0;
+  --color-zinc-100: #eeece3;
+  --color-zinc-200: #dedcd2;
+  --color-zinc-300: #c9c6ba;
+  --color-zinc-400: #8d8d85;
+  --color-zinc-500: #6e7380;
+  --color-zinc-600: #565b66;
+  --color-zinc-700: #3e434e;
+  --color-zinc-800: #2e333e;
+  --color-zinc-900: #232936;
+  --color-zinc-950: #1a1f2a;
+
+  /* sky/blue carried the old SaaS accent — both become ink-blue,
+     the color of an entry written into the ledger. */
+  --color-sky-50: #eff2f7;
+  --color-sky-100: #e1e7f0;
+  --color-sky-200: #c6d2e2;
+  --color-sky-300: #9fb2cc;
+  --color-sky-400: #6d87ac;
+  --color-sky-500: #4c6a94;
+  --color-sky-600: #3b5a86;
+  --color-sky-700: #2f4a70;
+  --color-sky-800: #273d5c;
+  --color-sky-900: #21334c;
+  --color-blue-100: #e1e7f0;
+  --color-blue-200: #c6d2e2;
+  --color-blue-400: #6d87ac;
+  --color-blue-800: #273d5c;
+  --color-blue-900: #21334c;
+
+  /* indigo appears on icons and edit affordances — same ink family. */
+  --color-indigo-500: #4c5a94;
+  --color-indigo-600: #3d4a80;
+
+  /* emerald = the enacted stamp (green ink). */
+  --color-emerald-100: #e4ebe2;
+  --color-emerald-200: #c8d5c4;
+  --color-emerald-400: #5f8266;
+  --color-emerald-500: #47705a;
+  --color-emerald-800: #2c5240;
+  --color-emerald-900: #244435;
+
+  /* red/rose = the seal (rejection, veto). */
+  --color-red-100: #f2e3df;
+  --color-red-200: #e3c8c1;
+  --color-red-400: #b0604f;
+  --color-red-500: #963a2e;
+  --color-red-600: #8a3428;
+  --color-red-800: #6e2a21;
+  --color-red-900: #5c231b;
+  --color-rose-100: #f2e3df;
+  --color-rose-300: #d8a99e;
+  --color-rose-600: #8a3428;
+  --color-rose-900: #5c231b;
+
+  /* amber = ochre pencil, the color of work still in draft. */
+  --color-amber-100: #f1e9d4;
+  --color-amber-200: #e2d5af;
+  --color-amber-400: #b08f33;
+  --color-amber-600: #8a6d1f;
+  --color-amber-800: #6f5719;
+  --color-amber-900: #5c4815;
+
+  /* violet = the Mayor's desk (final review). */
+  --color-violet-100: #e9e5f0;
+  --color-violet-200: #d2cbe2;
+  --color-violet-400: #7d72a8;
+  --color-violet-800: #4b4270;
+  --color-violet-900: #3e3760;
+
+  /* Type roles */
+  --font-sans: var(--font-public-sans), system-ui, sans-serif;
+  --font-display: var(--font-spectral), georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
 @layer base {
   :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
-    --border: #e2e8f0;
-    --surface: var(--color-surface-light);
-  }
-
-  .dark {
-    --background: #09090b;
-    --foreground: #f8fafc;
-    --border: #27272a;
-    --surface: var(--color-surface-dark);
+    --background: var(--color-paper);
+    --foreground: var(--color-ink);
+    --border: var(--color-rule);
   }
 
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-inter), sans-serif;
+    font-family: var(--font-sans);
+  }
+
+  /* Page titles are set in the register's serif; everything else stays sans. */
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-sky-600);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
+  /* A card is a sheet of paper laid on the desk: hairline edge, the
+     faintest shadow, squared corners. It does not float or lift. */
   .glass-card {
-    background: var(--surface);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--color-sheet);
     border: 1px solid var(--border);
-    border-radius: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    transition: all 0.3s ease;
-  }
-  
-  .glass-card:hover {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2px);
+    border-radius: 0.25rem;
+    box-shadow:
+      0 1px 0 rgba(35, 41, 54, 0.03),
+      0 1px 3px rgba(35, 41, 54, 0.05);
   }
 
+  /* Primary actions write to the ledger — ink, not accent color. */
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 disabled:pointer-events-none disabled:opacity-50 bg-sky-600 text-white hover:bg-sky-700 h-10 px-4 py-2;
+    @apply inline-flex items-center justify-center rounded-[2px] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2;
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-primary:hover {
+    background: var(--color-zinc-800);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:pointer-events-none disabled:opacity-50 border border-zinc-200 bg-white hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 h-10 px-4 py-2;
+    @apply inline-flex items-center justify-center rounded-[2px] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2;
+    background: var(--color-sheet);
+    border: 1px solid var(--border);
+    color: var(--color-ink);
+  }
+  .btn-secondary:hover {
+    background: var(--color-manila);
   }
 
   .input-field {
-    @apply flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950 dark:placeholder:text-zinc-400;
+    @apply flex h-10 w-full rounded-[2px] border border-zinc-200 bg-white px-3 py-2 text-sm placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
+  /* Ledger table: hairline rules, no filled header band, manila row hover. */
   .table-container {
-    @apply w-full overflow-auto rounded-lg border border-zinc-200 dark:border-zinc-800;
+    @apply w-full overflow-auto rounded-[0.25rem] border border-zinc-200;
   }
 
   .data-table {
@@ -70,10 +181,94 @@
   }
 
   .data-table th {
-    @apply h-12 px-4 text-left align-middle font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800;
+    @apply h-11 px-4 text-left align-middle border-b border-zinc-200 bg-white;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
   }
 
   .data-table td {
-    @apply p-4 align-middle border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black;
+    @apply px-4 py-3.5 align-middle border-b border-zinc-100 bg-white;
+  }
+
+  /* ——— The stamp system ————————————————————————————————————————
+     Statuses are rubber stamps pressed onto the record: uppercase,
+     letterspaced, bordered in their own ink. */
+  .stamp {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border: 1.5px solid currentColor;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .stamp--draft {
+    color: var(--color-ink-faint);
+    border-style: dashed;
+    border-width: 1px;
+  }
+  .stamp--hearings {
+    color: var(--color-amber-600);
+  }
+  .stamp--vice-mayor {
+    color: var(--color-sky-600);
+  }
+  .stamp--mayor {
+    color: var(--color-violet-800);
+  }
+  .stamp--enacted {
+    color: var(--color-emerald-800);
+  }
+  .stamp--returned {
+    color: var(--color-seal);
+  }
+  .stamp--vetoed {
+    color: var(--color-paper);
+    background: var(--color-seal);
+    border-color: var(--color-seal);
+  }
+  .stamp--archived {
+    color: var(--color-zinc-400);
+    border-style: dashed;
+    border-width: 1px;
+  }
+
+  /* The large stamp pressed on a decided record. */
+  .stamp-lg {
+    display: inline-block;
+    padding: 0.45rem 0.9rem;
+    border: 1.5px solid currentColor;
+    border-radius: 3px;
+    box-shadow: 0 0 0 2px var(--color-paper), 0 0 0 3.5px currentColor;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    line-height: 1;
+    transform: rotate(-4deg);
+    opacity: 0.9;
+  }
+
+  /* Ruled ledger paper, used as the login backdrop. */
+  .ledger-lines {
+    background-color: var(--color-paper);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(35, 41, 54, 0.055) 31px,
+      rgba(35, 41, 54, 0.055) 32px
+    );
   }
 }
