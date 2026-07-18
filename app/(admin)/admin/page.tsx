@@ -25,7 +25,7 @@ export default async function DashboardPage() {
           title="Total Ordinances"
           value={totals.ordinances.total}
           icon={FileText}
-          description={`${totals.ordinances.active} active`}
+          description={`${totals.ordinances.approved} approved — MOA, ${totals.ordinances.pending} pending`}
           trend="up"
         />
         <StatsCard

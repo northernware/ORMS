@@ -38,7 +38,8 @@ export async function createOrdinance(
     where: emptyToNull(formData.get('where')),
     why: emptyToNull(formData.get('why')),
     how: emptyToNull(formData.get('how')),
-    approvalAuthority: emptyToNull(formData.get('approvalAuthority')),
+    requestedBy: emptyToNull(formData.get('requestedBy')),
+    requestReceivedAt: emptyToNull(formData.get('requestReceivedAt')),
     departmentId: formData.get('departmentId'),
     summary: emptyToNull(formData.get('summary')),
     notes: emptyToNull(formData.get('notes')),
@@ -53,7 +54,8 @@ export async function createOrdinance(
   let created
   try {
     created = await OrdinanceService.create(
-      { ...parsed.data, createdBy: session.id, updatedBy: session.id },
+      // Every ordinance starts as a request awaiting the Mayor's decision.
+      { ...parsed.data, status: 'request_received', createdBy: session.id, updatedBy: session.id },
       headerList.get('x-forwarded-for') ?? undefined,
       headerList.get('user-agent') ?? undefined
     )

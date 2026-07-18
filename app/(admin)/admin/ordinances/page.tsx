@@ -28,25 +28,27 @@ export default async function OrdinancesPage({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Ordinances</h2>
-          <p className="text-zinc-500 dark:text-zinc-400">Manage legislative ordinances across all departments.</p>
+          <p className="text-zinc-500 dark:text-zinc-400">
+            Ordinance requests from the municipality — decided directly by the Mayor.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <SearchFilter placeholder="Search ordinances..." />
           <Link href="/admin/ordinances/create" className="btn-primary flex-shrink-0">
             <Plus className="h-4 w-4 mr-2" />
-            New Ordinance
+            Receive Request
           </Link>
         </div>
       </div>
 
-      <DataTable columns={['Number', 'Title', 'Department', 'Year', 'Status', 'Date', 'Actions']}>
+      <DataTable columns={['Number', 'Title', 'Requested By', 'Year', 'Status', 'Date', 'Actions']}>
         {ordinances.map((ord: any) => (
           <DataTableRow key={ord.id}>
             <DataTableCell className="font-mono text-[0.8rem] font-medium">{ord.ordinanceNumber}</DataTableCell>
             <DataTableCell>
               <div className="max-w-[300px] truncate" title={ord.title}>{ord.title}</div>
             </DataTableCell>
-            <DataTableCell>{ord.department.name}</DataTableCell>
+            <DataTableCell>{ord.requestedBy || ord.department.name}</DataTableCell>
             <DataTableCell>{ord.year}</DataTableCell>
             <DataTableCell>
               <StatusBadge status={ord.status} />
