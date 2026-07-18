@@ -22,8 +22,10 @@ export function ResolutionForm({ departments }: Props) {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">New Resolution</h2>
-          <p className="text-zinc-500 dark:text-zinc-400">Draft a resolution. It starts as a draft, then moves through hearings and approval.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Receive Request</h2>
+          <p className="text-zinc-500 dark:text-zinc-400">
+            Record a request for resolution. From here the SB office calendars it, the session refers it to committee, and the committee report returns for adoption.
+          </p>
         </div>
       </div>
 
@@ -48,13 +50,25 @@ export function ResolutionForm({ departments }: Props) {
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </FormField>
-            <FormField label="Approving Body" name="approvingBody" placeholder="Municipal Council" error={state?.errors?.approvingBody} />
+            <FormField label="Term" name="term" placeholder="2025-2028" error={state?.errors?.term} />
           </div>
         </div>
 
         <div className="glass-card p-6 space-y-6">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-50">Request</h3>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <FormField label="Requested By" name="requestedBy" placeholder="Requesting office or body" error={state?.errors?.requestedBy} />
+            <FormField label="Request Received On" name="requestReceivedAt" type="date" error={state?.errors?.requestReceivedAt} />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <input type="checkbox" name="endorsedByMayor" defaultChecked className="h-4 w-4 rounded border-zinc-300" />
+            Endorsed by the Mayor&apos;s Office (with letter)
+          </label>
+        </div>
+
+        <div className="glass-card p-6 space-y-6">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-50">5W1H Framework</h3>
-          <p className="text-xs text-zinc-500">All six fields must be filled before the resolution can be submitted for hearings.</p>
+          <p className="text-xs text-zinc-500">Optional at intake — complete these as the record moves through committee.</p>
           <div className="grid gap-6 sm:grid-cols-2">
             <FormField label="Who" name="who" placeholder="Responsible parties" error={state?.errors?.who} />
             <FormField label="When" name="when" type="date" error={state?.errors?.when} />
@@ -79,7 +93,7 @@ export function ResolutionForm({ departments }: Props) {
                 Saving…
               </span>
             ) : (
-              <span className="flex items-center gap-2"><Save className="h-4 w-4" /> Create Resolution</span>
+              <span className="flex items-center gap-2"><Save className="h-4 w-4" /> Record Request</span>
             )}
           </button>
         </div>

@@ -30,7 +30,6 @@ model User {
   updatedResolutions  Resolution[] @relation("ResolutionUpdater")
   uploadedDocuments   Document[]   @relation("DocumentUploader")
   approvedDocuments   Document[]   @relation("DocumentApprover")
-  recordedHearings    Hearing[]    @relation("HearingRecorder")
   auditLogs           AuditLog[]
 
   @@index([isActive, role])
@@ -88,34 +87,43 @@ model Ordinance {
   @@map("ordinances")
 }
 
+// A resolution is a term-based measure that originates as a request from
+// another office (usually endorsed by the Mayor's Office with a letter).
+// Lifecycle: request_received → calendared → in_committee → for_adoption
+// → adopted | not_adopted → signed. See types/index.ts for the state notes.
 model Resolution {
   id                      Int      @id @default(autoincrement())
-  resolutionNumber        String
+  resolutionNumber        String   @unique
   title                   String
   year                    Int
+  term                    String?
   who                     String?
   what                    String?
   when                    DateTime?
   where                   String?
   why                     String?
   how                     String?
-  approvingBody           String?
+  requestedBy             String?
+  requestReceivedAt       DateTime?
+  endorsedByMayor         Boolean  @default(false)
   responsibleDepartmentId Int
-  status                  String   @default("draft")
+  status                  String   @default("request_received")
   summary                 String?
-  feedback                String?
-  hearingCycle            Int      @default(1)
+  remarks                 String?
+  adoptedAt               DateTime?
+  signedAt                DateTime?
+  requesterNotifiedAt     DateTime?
   createdBy               Int
   updatedBy               Int
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  responsibleDepartment Department @relation(fields: [responsibleDepartmentId], references: [id])
-  creator               User       @relation("ResolutionCreator", fields: [createdBy], references: [id])
-  updater               User       @relation("ResolutionUpdater", fields: [updatedBy], references: [id])
+  responsibleDepartment Department          @relation(fields: [responsibleDepartmentId], references: [id])
+  creator               User                @relation("ResolutionCreator", fields: [createdBy], references: [id])
+  updater               User                @relation("ResolutionUpdater", fields: [updatedBy], references: [id])
   documents             Document[]
-  hearings              Hearing[]
-
+  calendarItems         CalendarItem[]
+  referrals             CommitteeReferral[]
 
   @@index([year, status])
   @@index([responsibleDepartmentId, status])
@@ -123,24 +131,77 @@ model Resolution {
   @@map("resolutions")
 }
 
-model Hearing {
-  id            Int      @id @default(autoincrement())
-  resolutionId  Int
-  cycle         Int      @default(1)
-  hearingNumber Int
-  heldAt        DateTime?
-  minutes       String?
-  notes         String?
-  recordedBy    Int
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+// One of the 11 standing committees of the Sangguniang Bayan.
+model Committee {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members   CommitteeMember[]
+  referrals CommitteeReferral[]
+
+  @@map("committees")
+}
+
+// Committee composition: 1 Chairman, 1 Vice_Chairman, 3 Members.
+// Members are stored by name — SB members are viewers, not actors, so they
+// need not exist as user accounts.
+model CommitteeMember {
+  id          Int      @id @default(autoincrement())
+  committeeId Int
+  name        String
+  position    String   // Chairman | Vice_Chairman | Member
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+
+  @@index([committeeId])
+  @@map("committee_members")
+}
+
+// An entry on the Calendar of Business — the agenda of a regular session.
+// A resolution appears twice: once for referral (first take-up) and once
+// for adoption (acting on the committee report).
+model CalendarItem {
+  id           Int      @id @default(autoincrement())
+  resolutionId Int
+  purpose      String   // referral | adoption
+  sessionDate  DateTime
+  remarks      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   resolution Resolution @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
-  recorder   User       @relation("HearingRecorder", fields: [recordedBy], references: [id])
 
-  @@unique([resolutionId, cycle, hearingNumber])
-  @@index([resolutionId, cycle])
-  @@map("hearings")
+  @@index([sessionDate])
+  @@index([resolutionId])
+  @@map("calendar_items")
+}
+
+// Referral of a resolution to a standing committee, and the committee
+// report (findings + recommendation) that comes back for adoption.
+model CommitteeReferral {
+  id                Int      @id @default(autoincrement())
+  resolutionId      Int
+  committeeId       Int
+  referredAt        DateTime @default(now())
+  hearingHeldAt     DateTime?
+  reportFindings    String?
+  reportRecommendation String?
+  reportSubmittedAt DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  resolution Resolution @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
+  committee  Committee  @relation(fields: [committeeId], references: [id])
+
+  @@index([resolutionId])
+  @@index([committeeId])
+  @@map("committee_referrals")
 }
 
 model Document {

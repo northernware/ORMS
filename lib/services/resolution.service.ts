@@ -1,17 +1,8 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/utils/audit'
-import {
-  canRecordHearings,
-  canViceMayorApprove,
-  canMayorApprove,
-} from '@/lib/utils/permissions'
+import { canRecordResolutionFlow, canViewAllResolutions } from '@/lib/utils/permissions'
 import type { ResolutionStatus, PaginatedResponse, UserContext } from '@/types'
-
-// Roles that may read resolutions across all departments.
-function canViewAllResolutions(user: UserContext) {
-  return user.role === 'Administrator' || user.role === 'Vice_Mayor' || user.role === 'Mayor'
-}
 
 export interface ResolutionFilters {
   year?: number
@@ -22,10 +13,6 @@ export interface ResolutionFilters {
   perPage?: number
 }
 
-function isComplete(r: { who: string | null; what: string | null; when: Date | null; where: string | null; why: string | null; how: string | null }) {
-  return !!(r.who && r.what && r.when && r.where && r.why && r.how)
-}
-
 export const ResolutionService = {
   async list(filters: ResolutionFilters, user: UserContext): Promise<PaginatedResponse<any>> {
     const { year, departmentId, status, search, page = 1, perPage = 15 } = filters
@@ -34,6 +21,7 @@ export const ResolutionService = {
     const viewAll = canViewAllResolutions(user)
     const where: Prisma.ResolutionWhereInput = {}
 
+    // Department users see only their own office's requests.
     if (!viewAll) {
       if (user.departmentId) {
         where.responsibleDepartmentId = user.departmentId
@@ -52,13 +40,19 @@ export const ResolutionService = {
         { title: { contains: search } },
         { summary: { contains: search } },
         { resolutionNumber: { contains: search } },
+        { requestedBy: { contains: search } },
       ]
     }
 
     const [items, total] = await Promise.all([
       prisma.resolution.findMany({
         where,
-        include: { responsibleDepartment: true, creator: true, updater: true },
+        include: {
+          responsibleDepartment: true,
+          creator: true,
+          updater: true,
+          referrals: { include: { committee: true }, orderBy: { referredAt: 'desc' } },
+        },
         skip,
         take: Math.min(perPage, 100),
         orderBy: { createdAt: 'desc' },
@@ -94,7 +88,14 @@ export const ResolutionService = {
   async findById(id: number, user: UserContext) {
     const resolution = await prisma.resolution.findUnique({
       where: { id },
-      include: { responsibleDepartment: true, creator: true, updater: true, documents: true },
+      include: {
+        responsibleDepartment: true,
+        creator: true,
+        updater: true,
+        documents: true,
+        calendarItems: { orderBy: { sessionDate: 'asc' } },
+        referrals: { include: { committee: { include: { members: true } } }, orderBy: { referredAt: 'desc' } },
+      },
     })
 
     if (!resolution) return null
@@ -142,139 +143,177 @@ export const ResolutionService = {
     })
   },
 
-  // Stage 1: author submits a complete draft (or a sent-back resolution) into the hearings stage.
-  // Resubmission after a Vice Mayor send-back opens a fresh hearing cycle.
-  async submitForHearings(id: number, user: UserContext, ipAddress?: string, userAgent?: string) {
-    const resolution = await prisma.resolution.findUnique({ where: { id } })
-    if (!resolution) throw new Error('NOT_FOUND')
-
-    if (user.role === 'Staff') throw new Error('FORBIDDEN')
-    if (
-      !canViewAllResolutions(user) &&
-      user.departmentId &&
-      resolution.responsibleDepartmentId !== user.departmentId &&
-      resolution.createdBy !== user.id
-    ) {
-      throw new Error('FORBIDDEN')
-    }
-    if (resolution.status !== 'draft' && resolution.status !== 'rejected') throw new Error('INVALID_STATUS')
-    if (!isComplete(resolution)) throw new Error('INCOMPLETE_RECORD')
-
-    const nextCycle = resolution.status === 'rejected' ? resolution.hearingCycle + 1 : resolution.hearingCycle
-
-    const updated = await prisma.resolution.update({
-      where: { id },
-      data: { status: 'in_hearings', hearingCycle: nextCycle, feedback: null, updatedBy: user.id },
-    })
-
-    await logAudit({
-      userId: user.id,
-      action: 'SUBMIT_FOR_HEARINGS',
-      tableName: 'resolutions',
-      recordId: id,
-      oldValues: { status: resolution.status },
-      newValues: { status: 'in_hearings', hearingCycle: nextCycle },
-      ipAddress,
-      userAgent,
-    })
-
-    return updated
-  },
-
-  // Stage 2: the secretariat records each of the three hearings/readings.
-  // The third hearing automatically advances the resolution to the Vice Mayor.
-  async recordHearing(
+  // Stage 1: SB office places the received request on the Calendar of
+  // Business for a regular session (where it will be referred to committee).
+  async placeOnCalendar(
     id: number,
-    data: { heldAt?: Date | null; minutes?: string | null; notes?: string | null },
+    data: { sessionDate: Date; remarks?: string | null },
     user: UserContext,
     ipAddress?: string,
     userAgent?: string
   ) {
-    if (!canRecordHearings(user)) throw new Error('FORBIDDEN')
+    if (!canRecordResolutionFlow(user)) throw new Error('FORBIDDEN')
 
     const resolution = await prisma.resolution.findUnique({ where: { id } })
     if (!resolution) throw new Error('NOT_FOUND')
-    if (resolution.status !== 'in_hearings') throw new Error('INVALID_STATUS')
+    if (resolution.status !== 'request_received') throw new Error('INVALID_STATUS')
 
-    const priorCount = await prisma.hearing.count({
-      where: { resolutionId: id, cycle: resolution.hearingCycle },
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.calendarItem.create({
+        data: { resolutionId: id, purpose: 'referral', sessionDate: data.sessionDate, remarks: data.remarks ?? null },
+      })
+      return tx.resolution.update({
+        where: { id },
+        data: { status: 'calendared', updatedBy: user.id },
+      })
     })
-    if (priorCount >= 3) throw new Error('HEARINGS_COMPLETE')
-    const hearingNumber = priorCount + 1
 
-    const result = await prisma.$transaction(async (tx) => {
-      const hearing = await tx.hearing.create({
+    await logAudit({
+      userId: user.id,
+      action: 'PLACE_ON_CALENDAR',
+      tableName: 'resolutions',
+      recordId: id,
+      oldValues: { status: resolution.status },
+      newValues: { status: 'calendared', sessionDate: data.sessionDate },
+      ipAddress,
+      userAgent,
+    })
+
+    return updated
+  },
+
+  // Stage 2: in regular session the SB refers the matter to one of the 11
+  // standing committees for committee hearing.
+  async referToCommittee(
+    id: number,
+    data: { committeeId: number; referredAt?: Date | null },
+    user: UserContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    if (!canRecordResolutionFlow(user)) throw new Error('FORBIDDEN')
+
+    const resolution = await prisma.resolution.findUnique({ where: { id } })
+    if (!resolution) throw new Error('NOT_FOUND')
+    if (resolution.status !== 'calendared') throw new Error('INVALID_STATUS')
+
+    const committee = await prisma.committee.findUnique({ where: { id: data.committeeId } })
+    if (!committee || !committee.isActive) throw new Error('COMMITTEE_NOT_FOUND')
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.committeeReferral.create({
         data: {
           resolutionId: id,
-          cycle: resolution.hearingCycle,
-          hearingNumber,
-          heldAt: data.heldAt ?? null,
-          minutes: data.minutes ?? null,
-          notes: data.notes ?? null,
-          recordedBy: user.id,
+          committeeId: data.committeeId,
+          referredAt: data.referredAt ?? new Date(),
         },
       })
-
-      const updated =
-        hearingNumber === 3
-          ? await tx.resolution.update({
-              where: { id },
-              data: { status: 'pending_vice_mayor', updatedBy: user.id },
-            })
-          : resolution
-
-      return { hearing, resolution: updated }
+      return tx.resolution.update({
+        where: { id },
+        data: { status: 'in_committee', updatedBy: user.id },
+      })
     })
 
     await logAudit({
       userId: user.id,
-      action: 'RECORD_HEARING',
+      action: 'REFER_TO_COMMITTEE',
       tableName: 'resolutions',
       recordId: id,
-      newValues: {
-        cycle: resolution.hearingCycle,
-        hearingNumber,
-        advancedTo: hearingNumber === 3 ? 'pending_vice_mayor' : null,
+      oldValues: { status: resolution.status },
+      newValues: { status: 'in_committee', committee: committee.name },
+      ipAddress,
+      userAgent,
+    })
+
+    return updated
+  },
+
+  // Stage 3: after the committee hearing, the committee report (findings and
+  // recommendation) goes back on the Calendar of Business for adoption.
+  async submitCommitteeReport(
+    id: number,
+    data: { findings?: string | null; recommendation: string; hearingHeldAt?: Date | null; sessionDate: Date },
+    user: UserContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    if (!canRecordResolutionFlow(user)) throw new Error('FORBIDDEN')
+
+    const resolution = await prisma.resolution.findUnique({
+      where: { id },
+      include: { referrals: { orderBy: { referredAt: 'desc' }, take: 1 } },
+    })
+    if (!resolution) throw new Error('NOT_FOUND')
+    if (resolution.status !== 'in_committee') throw new Error('INVALID_STATUS')
+
+    const referral = resolution.referrals[0]
+    if (!referral) throw new Error('NO_REFERRAL')
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.committeeReferral.update({
+        where: { id: referral.id },
+        data: {
+          hearingHeldAt: data.hearingHeldAt ?? null,
+          reportFindings: data.findings ?? null,
+          reportRecommendation: data.recommendation,
+          reportSubmittedAt: new Date(),
+        },
+      })
+      await tx.calendarItem.create({
+        data: { resolutionId: id, purpose: 'adoption', sessionDate: data.sessionDate },
+      })
+      return tx.resolution.update({
+        where: { id },
+        data: { status: 'for_adoption', updatedBy: user.id },
+      })
+    })
+
+    await logAudit({
+      userId: user.id,
+      action: 'SUBMIT_COMMITTEE_REPORT',
+      tableName: 'resolutions',
+      recordId: id,
+      oldValues: { status: resolution.status },
+      newValues: { status: 'for_adoption', recommendation: data.recommendation },
+      ipAddress,
+      userAgent,
+    })
+
+    return updated
+  },
+
+  // Stage 4: the whole SB membership acts on the committee report in regular
+  // session. Only the outcome is recorded — the vote happens on the floor.
+  async recordAdoption(
+    id: number,
+    data: { outcome: 'adopted' | 'not_adopted'; decidedAt?: Date | null; remarks?: string | null },
+    user: UserContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    if (!canRecordResolutionFlow(user)) throw new Error('FORBIDDEN')
+
+    const resolution = await prisma.resolution.findUnique({ where: { id } })
+    if (!resolution) throw new Error('NOT_FOUND')
+    if (resolution.status !== 'for_adoption') throw new Error('INVALID_STATUS')
+
+    const updated = await prisma.resolution.update({
+      where: { id },
+      data: {
+        status: data.outcome,
+        adoptedAt: data.outcome === 'adopted' ? data.decidedAt ?? new Date() : null,
+        remarks: data.remarks ?? null,
+        updatedBy: user.id,
       },
-      ipAddress,
-      userAgent,
-    })
-
-    return result
-  },
-
-  async listHearings(id: number, user: UserContext) {
-    // Reuse findById for access scoping (throws FORBIDDEN / returns null when appropriate).
-    const resolution = await ResolutionService.findById(id, user)
-    if (!resolution) throw new Error('NOT_FOUND')
-
-    return prisma.hearing.findMany({
-      where: { resolutionId: id },
-      include: { recorder: true },
-      orderBy: [{ cycle: 'asc' }, { hearingNumber: 'asc' }],
-    })
-  },
-
-  // Stage 3: Vice Mayor (presiding officer) approves or sends back for revision.
-  async viceMayorApprove(id: number, user: UserContext, ipAddress?: string, userAgent?: string) {
-    if (!canViceMayorApprove(user)) throw new Error('FORBIDDEN')
-
-    const resolution = await prisma.resolution.findUnique({ where: { id } })
-    if (!resolution) throw new Error('NOT_FOUND')
-    if (resolution.status !== 'pending_vice_mayor') throw new Error('INVALID_STATUS')
-
-    const updated = await prisma.resolution.update({
-      where: { id },
-      data: { status: 'pending_mayor', updatedBy: user.id },
     })
 
     await logAudit({
       userId: user.id,
-      action: 'VICE_MAYOR_APPROVE',
+      action: data.outcome === 'adopted' ? 'RECORD_ADOPTION' : 'RECORD_NON_ADOPTION',
       tableName: 'resolutions',
       recordId: id,
-      oldValues: { status: 'pending_vice_mayor' },
-      newValues: { status: 'pending_mayor' },
+      oldValues: { status: resolution.status },
+      newValues: { status: data.outcome, remarks: data.remarks ?? null },
       ipAddress,
       userAgent,
     })
@@ -282,25 +321,38 @@ export const ResolutionService = {
     return updated
   },
 
-  async viceMayorReject(id: number, user: UserContext, reason?: string, ipAddress?: string, userAgent?: string) {
-    if (!canViceMayorApprove(user)) throw new Error('FORBIDDEN')
+  // Stage 5: the Mayor signs the adopted resolution and the requester is
+  // notified. SB staff record both dates.
+  async recordSignature(
+    id: number,
+    data: { signedAt?: Date | null; requesterNotifiedAt?: Date | null },
+    user: UserContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    if (!canRecordResolutionFlow(user)) throw new Error('FORBIDDEN')
 
     const resolution = await prisma.resolution.findUnique({ where: { id } })
     if (!resolution) throw new Error('NOT_FOUND')
-    if (resolution.status !== 'pending_vice_mayor') throw new Error('INVALID_STATUS')
+    if (resolution.status !== 'adopted') throw new Error('INVALID_STATUS')
 
     const updated = await prisma.resolution.update({
       where: { id },
-      data: { status: 'rejected', feedback: reason ?? null, updatedBy: user.id },
+      data: {
+        status: 'signed',
+        signedAt: data.signedAt ?? new Date(),
+        requesterNotifiedAt: data.requesterNotifiedAt ?? null,
+        updatedBy: user.id,
+      },
     })
 
     await logAudit({
       userId: user.id,
-      action: 'VICE_MAYOR_REJECT',
+      action: 'RECORD_MAYOR_SIGNATURE',
       tableName: 'resolutions',
       recordId: id,
-      oldValues: { status: 'pending_vice_mayor' },
-      newValues: { status: 'rejected', feedback: reason ?? null },
+      oldValues: { status: resolution.status },
+      newValues: { status: 'signed', signedAt: updated.signedAt, requesterNotifiedAt: updated.requesterNotifiedAt },
       ipAddress,
       userAgent,
     })
@@ -308,57 +360,18 @@ export const ResolutionService = {
     return updated
   },
 
-  // Stage 4: Mayor (local chief executive) gives final approval or a terminal veto.
-  async mayorApprove(id: number, user: UserContext, ipAddress?: string, userAgent?: string) {
-    if (!canMayorApprove(user)) throw new Error('FORBIDDEN')
-
-    const resolution = await prisma.resolution.findUnique({ where: { id } })
-    if (!resolution) throw new Error('NOT_FOUND')
-    if (resolution.status !== 'pending_mayor') throw new Error('INVALID_STATUS')
-
-    const updated = await prisma.resolution.update({
-      where: { id },
-      data: { status: 'active', updatedBy: user.id },
+  // Calendar of Business: all agenda entries, newest session first.
+  async listCalendar() {
+    return prisma.calendarItem.findMany({
+      include: {
+        resolution: {
+          include: {
+            responsibleDepartment: true,
+            referrals: { include: { committee: true }, orderBy: { referredAt: 'desc' }, take: 1 },
+          },
+        },
+      },
+      orderBy: [{ sessionDate: 'desc' }, { createdAt: 'asc' }],
     })
-
-    await logAudit({
-      userId: user.id,
-      action: 'MAYOR_APPROVE',
-      tableName: 'resolutions',
-      recordId: id,
-      oldValues: { status: 'pending_mayor' },
-      newValues: { status: 'active' },
-      ipAddress,
-      userAgent,
-    })
-
-    return updated
-  },
-
-  // A Mayor veto is terminal — the resolution cannot be resubmitted.
-  async mayorVeto(id: number, user: UserContext, reason?: string, ipAddress?: string, userAgent?: string) {
-    if (!canMayorApprove(user)) throw new Error('FORBIDDEN')
-
-    const resolution = await prisma.resolution.findUnique({ where: { id } })
-    if (!resolution) throw new Error('NOT_FOUND')
-    if (resolution.status !== 'pending_mayor') throw new Error('INVALID_STATUS')
-
-    const updated = await prisma.resolution.update({
-      where: { id },
-      data: { status: 'vetoed', feedback: reason ?? null, updatedBy: user.id },
-    })
-
-    await logAudit({
-      userId: user.id,
-      action: 'MAYOR_VETO',
-      tableName: 'resolutions',
-      recordId: id,
-      oldValues: { status: 'pending_mayor' },
-      newValues: { status: 'vetoed', feedback: reason ?? null },
-      ipAddress,
-      userAgent,
-    })
-
-    return updated
   },
 }

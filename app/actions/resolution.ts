@@ -32,13 +32,16 @@ export async function createResolution(
     resolutionNumber: formData.get('resolutionNumber'),
     title: formData.get('title'),
     year: formData.get('year'),
+    term: emptyToNull(formData.get('term')),
     who: emptyToNull(formData.get('who')),
     what: emptyToNull(formData.get('what')),
     when: emptyToNull(formData.get('when')),
     where: emptyToNull(formData.get('where')),
     why: emptyToNull(formData.get('why')),
     how: emptyToNull(formData.get('how')),
-    approvingBody: emptyToNull(formData.get('approvingBody')),
+    requestedBy: emptyToNull(formData.get('requestedBy')),
+    requestReceivedAt: emptyToNull(formData.get('requestReceivedAt')),
+    endorsedByMayor: formData.get('endorsedByMayor') === 'on',
     responsibleDepartmentId: formData.get('responsibleDepartmentId'),
     summary: emptyToNull(formData.get('summary')),
   })
@@ -52,8 +55,9 @@ export async function createResolution(
   let created
   try {
     created = await ResolutionService.create(
-      // New resolutions always start as a draft — the approval flow takes it from there.
-      { ...parsed.data, status: 'draft', createdBy: session.id, updatedBy: session.id },
+      // Every resolution starts life as a received request — the SB office
+      // calendars it from there.
+      { ...parsed.data, status: 'request_received', createdBy: session.id, updatedBy: session.id },
       headerList.get('x-forwarded-for') ?? undefined,
       headerList.get('user-agent') ?? undefined
     )

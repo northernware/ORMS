@@ -8,67 +8,68 @@ interface Step {
   note: string
 }
 
-// The paper routing slip attached to a resolution as it moves between
-// offices. Each box is one desk; the slip shows where the record sits.
-function buildSteps(status: string, hearingsHeld: number): Step[] {
-  const readingsNote = `${Math.min(hearingsHeld, 3)} of 3 held`
+// The paper routing slip attached to a resolution as it moves through the
+// Sangguniang Bayan: request intake → Calendar of Business → committee
+// hearing → adoption by the whole SB → Mayor's signature.
+function buildSteps(status: string, committeeName?: string | null): Step[] {
+  const committeeNote = committeeName ?? 'Committee hearing'
 
   switch (status) {
-    case 'draft':
+    case 'request_received':
       return [
-        { label: 'Filed', state: 'current', note: 'In preparation' },
-        { label: 'Readings', state: 'pending', note: '—' },
-        { label: 'Vice Mayor', state: 'pending', note: '—' },
+        { label: 'Request', state: 'current', note: 'Received by SB office' },
+        { label: 'Calendar', state: 'pending', note: '—' },
+        { label: 'Committee', state: 'pending', note: '—' },
+        { label: 'Adoption', state: 'pending', note: '—' },
         { label: 'Mayor', state: 'pending', note: '—' },
-        { label: 'Enactment', state: 'pending', note: '—' },
       ]
-    case 'in_hearings':
+    case 'calendared':
       return [
-        { label: 'Filed', state: 'done', note: 'Submitted' },
-        { label: 'Readings', state: 'current', note: readingsNote },
-        { label: 'Vice Mayor', state: 'pending', note: '—' },
+        { label: 'Request', state: 'done', note: 'Received' },
+        { label: 'Calendar', state: 'current', note: 'On Calendar of Business' },
+        { label: 'Committee', state: 'pending', note: '—' },
+        { label: 'Adoption', state: 'pending', note: '—' },
         { label: 'Mayor', state: 'pending', note: '—' },
-        { label: 'Enactment', state: 'pending', note: '—' },
       ]
-    case 'pending_vice_mayor':
+    case 'in_committee':
       return [
-        { label: 'Filed', state: 'done', note: 'Submitted' },
-        { label: 'Readings', state: 'done', note: '3 of 3 held' },
-        { label: 'Vice Mayor', state: 'current', note: 'Awaiting action' },
+        { label: 'Request', state: 'done', note: 'Received' },
+        { label: 'Calendar', state: 'done', note: 'Taken up in session' },
+        { label: 'Committee', state: 'current', note: committeeNote },
+        { label: 'Adoption', state: 'pending', note: '—' },
         { label: 'Mayor', state: 'pending', note: '—' },
-        { label: 'Enactment', state: 'pending', note: '—' },
       ]
-    case 'pending_mayor':
+    case 'for_adoption':
       return [
-        { label: 'Filed', state: 'done', note: 'Submitted' },
-        { label: 'Readings', state: 'done', note: '3 of 3 held' },
-        { label: 'Vice Mayor', state: 'done', note: 'Approved' },
-        { label: 'Mayor', state: 'current', note: 'Awaiting action' },
-        { label: 'Enactment', state: 'pending', note: '—' },
-      ]
-    case 'active':
-      return [
-        { label: 'Filed', state: 'done', note: 'Submitted' },
-        { label: 'Readings', state: 'done', note: '3 of 3 held' },
-        { label: 'Vice Mayor', state: 'done', note: 'Approved' },
-        { label: 'Mayor', state: 'done', note: 'Approved' },
-        { label: 'Enactment', state: 'done', note: 'In effect' },
-      ]
-    case 'rejected':
-      return [
-        { label: 'Filed', state: 'done', note: 'Submitted' },
-        { label: 'Readings', state: 'done', note: '3 of 3 held' },
-        { label: 'Vice Mayor', state: 'halted', note: 'Returned for revision' },
+        { label: 'Request', state: 'done', note: 'Received' },
+        { label: 'Calendar', state: 'done', note: 'Taken up in session' },
+        { label: 'Committee', state: 'done', note: 'Report submitted' },
+        { label: 'Adoption', state: 'current', note: 'On calendar for adoption' },
         { label: 'Mayor', state: 'pending', note: '—' },
-        { label: 'Enactment', state: 'pending', note: '—' },
       ]
-    case 'vetoed':
+    case 'adopted':
       return [
-        { label: 'Filed', state: 'done', note: 'Submitted' },
-        { label: 'Readings', state: 'done', note: '3 of 3 held' },
-        { label: 'Vice Mayor', state: 'done', note: 'Approved' },
-        { label: 'Mayor', state: 'halted', note: 'Vetoed — final' },
-        { label: 'Enactment', state: 'pending', note: '—' },
+        { label: 'Request', state: 'done', note: 'Received' },
+        { label: 'Calendar', state: 'done', note: 'Taken up in session' },
+        { label: 'Committee', state: 'done', note: 'Report submitted' },
+        { label: 'Adoption', state: 'done', note: 'Approved by the SB' },
+        { label: 'Mayor', state: 'current', note: 'Awaiting signature' },
+      ]
+    case 'not_adopted':
+      return [
+        { label: 'Request', state: 'done', note: 'Received' },
+        { label: 'Calendar', state: 'done', note: 'Taken up in session' },
+        { label: 'Committee', state: 'done', note: 'Report submitted' },
+        { label: 'Adoption', state: 'halted', note: 'Not adopted — final' },
+        { label: 'Mayor', state: 'pending', note: '—' },
+      ]
+    case 'signed':
+      return [
+        { label: 'Request', state: 'done', note: 'Received' },
+        { label: 'Calendar', state: 'done', note: 'Taken up in session' },
+        { label: 'Committee', state: 'done', note: 'Report submitted' },
+        { label: 'Adoption', state: 'done', note: 'Approved by the SB' },
+        { label: 'Mayor', state: 'done', note: 'Signed — requester notified' },
       ]
     default:
       return []
@@ -84,14 +85,12 @@ const noteColor: Record<StepState, string> = {
 
 export function RoutingSlip({
   status,
-  hearingsHeld,
-  cycle,
+  committeeName,
 }: {
   status: string
-  hearingsHeld: number
-  cycle: number
+  committeeName?: string | null
 }) {
-  const steps = buildSteps(status, hearingsHeld)
+  const steps = buildSteps(status, committeeName)
   if (steps.length === 0) return null
 
   return (
@@ -100,11 +99,6 @@ export function RoutingSlip({
         <span className="font-mono text-[0.65rem] uppercase tracking-[0.14em] text-zinc-500">
           Routing slip
         </span>
-        {cycle > 1 && (
-          <span className="font-mono text-[0.65rem] uppercase tracking-[0.14em] text-amber-600">
-            Cycle {cycle} — resubmitted
-          </span>
-        )}
       </div>
       <ol className="grid grid-cols-1 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200">
         {steps.map((step, i) => (

@@ -29,27 +29,31 @@ export default async function ResolutionsPage({
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Resolutions</h2>
           <p className="text-zinc-500 dark:text-zinc-400">
-            Track resolutions through hearings, Vice Mayor, and Mayor approval.
+            From request to calendar, committee, adoption, and the Mayor&apos;s signature.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <SearchFilter placeholder="Search resolutions..." />
           <Link href="/admin/resolutions/create" className="btn-primary flex-shrink-0">
             <Plus className="h-4 w-4 mr-2" />
-            New Resolution
+            Receive Request
           </Link>
         </div>
       </div>
 
-      <DataTable columns={['Number', 'Title', 'Department', 'Year', 'Status', 'Date', 'Actions']}>
+      <DataTable columns={['Number', 'Title', 'Requested By', 'Committee', 'Status', 'Date', 'Actions']}>
         {resolutions.map((res: any) => (
           <DataTableRow key={res.id}>
             <DataTableCell className="font-mono text-[0.8rem] font-medium">{res.resolutionNumber}</DataTableCell>
             <DataTableCell>
               <div className="max-w-[300px] truncate" title={res.title}>{res.title}</div>
             </DataTableCell>
-            <DataTableCell>{res.responsibleDepartment.name}</DataTableCell>
-            <DataTableCell>{res.year}</DataTableCell>
+            <DataTableCell>{res.requestedBy || res.responsibleDepartment.name}</DataTableCell>
+            <DataTableCell>
+              <div className="max-w-[200px] truncate" title={res.referrals?.[0]?.committee?.name}>
+                {res.referrals?.[0]?.committee?.name?.replace('Committee on ', '') || '—'}
+              </div>
+            </DataTableCell>
             <DataTableCell>
               <StatusBadge status={res.status} />
             </DataTableCell>
