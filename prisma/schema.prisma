@@ -54,6 +54,10 @@ model Department {
   @@map("departments")
 }
 
+// An ordinance is a direct request to the Mayor — anyone from the
+// municipality can file one. No hearings, no vote: if the Mayor approves
+// the request, a MOA follows immediately.
+// Lifecycle: request_received → approved | declined.
 model Ordinance {
   id                Int      @id @default(autoincrement())
   ordinanceNumber   String   @unique
@@ -65,9 +69,12 @@ model Ordinance {
   where             String?
   why               String?
   how               String?
-  approvalAuthority String?
+  requestedBy       String?
+  requestReceivedAt DateTime?
+  decidedAt         DateTime?
+  remarks           String?
   departmentId      Int
-  status            String   @default("active")
+  status            String   @default("request_received")
   summary           String?
   notes             String?
   createdBy         Int

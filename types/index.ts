@@ -12,7 +12,13 @@ export type Role =
   | 'Vice_Mayor'
   | 'Mayor'
 
-export type OrdinanceStatus = 'active' | 'inactive'
+// Ordinance lifecycle: anyone from the municipality can request one.
+// No hearing, no vote — the Mayor decides on the request directly, and an
+// approval means a MOA right away.
+//   request_received — request filed with the Mayor's office
+//   approved         — Mayor approved; MOA executed immediately
+//   declined         — Mayor declined the request (terminal)
+export type OrdinanceStatus = 'request_received' | 'approved' | 'declined' | 'inactive'
 
 // Resolution lifecycle (real Sangguniang Bayan process):
 //   request_received — request from another office, usually endorsed by the

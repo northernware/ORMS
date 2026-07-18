@@ -231,11 +231,12 @@ async function main() {
 
   console.log('✅ Committees seeded')
 
-  // Seed sample ordinances
-  await prisma.ordinance.upsert({
-    where: { ordinanceNumber: 'ORD-2025-001' },
-    update: {},
-    create: {
+  // Seed sample ordinances — requests decided directly by the Mayor.
+  // Delete-and-recreate keeps re-seeding from piling up duplicates.
+  await prisma.ordinance.deleteMany({})
+
+  await prisma.ordinance.create({
+    data: {
       ordinanceNumber: 'ORD-2025-001',
       title: 'Municipal Waste Management Ordinance',
       year: 2025,
@@ -245,19 +246,19 @@ async function main() {
       where: 'Municipality-wide',
       why: 'Environmental protection and public health',
       how: 'Implementation of segregation, collection, and disposal protocols',
-      approvalAuthority: 'Municipal Council',
+      requestedBy: 'Municipal Health Office',
+      requestReceivedAt: new Date('2025-01-05'),
+      decidedAt: new Date('2025-01-15'),
       departmentId: healthDept.id,
-      status: 'active',
+      status: 'approved',
       summary: 'Establishes comprehensive waste management protocols across the municipality.',
       createdBy: admin.id,
       updatedBy: admin.id,
     },
   })
 
-  await prisma.ordinance.upsert({
-    where: { ordinanceNumber: 'ORD-2025-002' },
-    update: {},
-    create: {
+  await prisma.ordinance.create({
+    data: {
       ordinanceNumber: 'ORD-2025-002',
       title: 'Building Code Amendment',
       year: 2025,
@@ -267,10 +268,44 @@ async function main() {
       where: 'All construction zones',
       why: 'Earthquake preparedness and structural safety',
       how: 'Adoption of updated seismic design standards',
-      approvalAuthority: 'Municipal Council',
+      requestedBy: 'Engineering Department',
+      requestReceivedAt: new Date('2025-02-20'),
+      decidedAt: new Date('2025-03-01'),
       departmentId: engrDept.id,
-      status: 'active',
+      status: 'approved',
       summary: 'Amends existing building codes to include enhanced seismic standards.',
+      createdBy: admin.id,
+      updatedBy: admin.id,
+    },
+  })
+
+  await prisma.ordinance.create({
+    data: {
+      ordinanceNumber: 'ORD-2026-001',
+      title: 'Curfew Hours for Minors in Public Places',
+      year: 2026,
+      requestedBy: 'Brgy. Captain, Centro',
+      requestReceivedAt: new Date('2026-07-10'),
+      departmentId: adminDept.id,
+      status: 'request_received',
+      summary: 'Barangay request to set curfew hours for minors in public places.',
+      createdBy: admin.id,
+      updatedBy: admin.id,
+    },
+  })
+
+  await prisma.ordinance.create({
+    data: {
+      ordinanceNumber: 'ORD-2026-002',
+      title: 'Ban on Videoke Beyond 10 PM',
+      year: 2026,
+      requestedBy: 'Concerned residents, Sitio Riverside',
+      requestReceivedAt: new Date('2026-06-02'),
+      decidedAt: new Date('2026-06-20'),
+      remarks: 'Covered by existing noise regulations; enforcement referred to the barangay.',
+      departmentId: adminDept.id,
+      status: 'declined',
+      summary: 'Resident petition to prohibit videoke sessions past 10 PM.',
       createdBy: admin.id,
       updatedBy: admin.id,
     },

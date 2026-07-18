@@ -22,8 +22,10 @@ export function OrdinanceForm({ departments }: Props) {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">New Ordinance</h2>
-          <p className="text-zinc-500 dark:text-zinc-400">Record a new legislative ordinance.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Receive Ordinance Request</h2>
+          <p className="text-zinc-500 dark:text-zinc-400">
+            Anyone from the municipality may request an ordinance. The Mayor decides directly — if approved, a MOA follows immediately.
+          </p>
         </div>
       </div>
 
@@ -48,7 +50,10 @@ export function OrdinanceForm({ departments }: Props) {
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </FormField>
-            <FormField label="Approval Authority" name="approvalAuthority" placeholder="Municipal Council" error={state?.errors?.approvalAuthority} />
+            <FormField label="Requested By" name="requestedBy" placeholder="Resident, barangay, office…" error={state?.errors?.requestedBy} />
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <FormField label="Request Received On" name="requestReceivedAt" type="date" error={state?.errors?.requestReceivedAt} />
           </div>
         </div>
 
@@ -79,7 +84,7 @@ export function OrdinanceForm({ departments }: Props) {
                 Saving…
               </span>
             ) : (
-              <span className="flex items-center gap-2"><Save className="h-4 w-4" /> Create Ordinance</span>
+              <span className="flex items-center gap-2"><Save className="h-4 w-4" /> Record Request</span>
             )}
           </button>
         </div>

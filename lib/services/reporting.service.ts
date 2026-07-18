@@ -39,20 +39,22 @@ export const ReportingService = {
   },
 
   async getSummaryTotals(): Promise<{
-    ordinances: { total: number; active: number; inactive: number };
+    ordinances: { total: number; approved: number; pending: number };
     resolutions: { total: number; byStatus: { status: string; total: number }[] };
     documents: { total: number; latestVersions: number; totalStorageBytes: number };
   }> {
     const [
       totalOrdinances,
-      activeOrdinances,
+      approvedOrdinances,
+      pendingOrdinances,
       totalResolutions,
       totalDocuments,
       latestDocuments,
       totalStorageResult,
     ] = await Promise.all([
       prisma.ordinance.count(),
-      prisma.ordinance.count({ where: { status: 'active' } }),
+      prisma.ordinance.count({ where: { status: 'approved' } }),
+      prisma.ordinance.count({ where: { status: 'request_received' } }),
       prisma.resolution.count(),
       prisma.document.count(),
       prisma.document.count({ where: { isLatestVersion: true } }),
@@ -62,8 +64,8 @@ export const ReportingService = {
     return {
       ordinances: {
         total: totalOrdinances,
-        active: activeOrdinances,
-        inactive: totalOrdinances - activeOrdinances,
+        approved: approvedOrdinances,
+        pending: pendingOrdinances,
       },
       resolutions: {
         total: totalResolutions,

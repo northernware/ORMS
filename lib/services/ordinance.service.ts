@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/utils/audit'
+import { canManageOrdinances } from '@/lib/utils/permissions'
 import type { OrdinanceStatus, PaginatedResponse, UserContext } from '@/types'
 
 export interface OrdinanceFilters {
@@ -138,6 +139,47 @@ export const OrdinanceService = {
       where: { id },
       data: { status: 'inactive', updatedBy: user.id },
     })
+  },
+
+  // The Mayor decides on the request directly — no hearing, no vote.
+  // Approval means a MOA right away; staff record the decision.
+  async recordMayorDecision(
+    id: number,
+    data: { decision: 'approved' | 'declined'; decidedAt?: Date | null; remarks?: string | null },
+    user: UserContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    if (!canManageOrdinances(user)) throw new Error('FORBIDDEN')
+
+    // findById enforces department scoping — a Department_Head may only
+    // record decisions on their own department's requests.
+    const ordinance = await OrdinanceService.findById(id, user)
+    if (!ordinance) throw new Error('NOT_FOUND')
+    if (ordinance.status !== 'request_received') throw new Error('INVALID_STATUS')
+
+    const updated = await prisma.ordinance.update({
+      where: { id },
+      data: {
+        status: data.decision,
+        decidedAt: data.decidedAt ?? new Date(),
+        remarks: data.remarks ?? null,
+        updatedBy: user.id,
+      },
+    })
+
+    await logAudit({
+      userId: user.id,
+      action: data.decision === 'approved' ? 'MAYOR_APPROVE_ORDINANCE' : 'MAYOR_DECLINE_ORDINANCE',
+      tableName: 'ordinances',
+      recordId: id,
+      oldValues: { status: ordinance.status },
+      newValues: { status: data.decision, decidedAt: updated.decidedAt, remarks: data.remarks ?? null },
+      ipAddress,
+      userAgent,
+    })
+
+    return updated
   },
 
   getFiveWOneH(ordinance: { who: string | null; what: string | null; when: Date | null; where: string | null; why: string | null; how: string | null }) {

@@ -2,10 +2,12 @@ import React from 'react'
 import { getSession } from '@/lib/session'
 import { OrdinanceService } from '@/lib/services/ordinance.service'
 import { StatusBadge } from '@/app/components/StatusBadge'
+import { OrdinanceActions } from '@/app/components/OrdinanceActions'
+import { OrdinanceSlip } from '@/app/components/RoutingSlip'
 import { formatDate } from '@/lib/utils/format'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, FileText, User, Calendar, MapPin, HelpCircle, Briefcase, FileSignature, Clock } from 'lucide-react'
+import { ArrowLeft, FileText, User, Calendar, MapPin, HelpCircle, Briefcase, FileSignature, Clock, Inbox } from 'lucide-react'
 
 export default async function ViewOrdinancePage({
   params,
@@ -44,10 +46,59 @@ export default async function ViewOrdinancePage({
           </div>
           <p className="text-zinc-500 dark:text-zinc-400">{ordinance.title}</p>
         </div>
+        {ordinance.status === 'approved' && (
+          <span className="stamp-lg text-emerald-800 ml-auto hidden sm:inline-block">MOA</span>
+        )}
+        {ordinance.status === 'declined' && (
+          <span className="stamp-lg text-red-600 ml-auto hidden sm:inline-block">Declined</span>
+        )}
       </div>
+
+      <OrdinanceSlip status={ordinance.status} />
+
+      {ordinance.remarks && ordinance.status === 'declined' && (
+        <div className="glass-card p-4 border-l-4 border-l-red-500">
+          <p className="text-xs uppercase tracking-wider text-red-600 font-semibold mb-1">
+            Declined by the Mayor
+          </p>
+          <p className="text-sm text-zinc-700">{ordinance.remarks}</p>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
+          <div className="glass-card overflow-hidden">
+            <div className="bg-zinc-50/50 px-6 py-4 border-b border-zinc-200">
+              <h3 className="text-lg font-semibold text-zinc-900 flex items-center gap-2">
+                <Inbox className="h-5 w-5 text-amber-500" /> Request
+              </h3>
+            </div>
+            <dl className="divide-y divide-zinc-200">
+              <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt className="text-sm font-medium text-zinc-500">Requested by</dt>
+                <dd className="mt-1 text-sm text-zinc-900 sm:col-span-2 sm:mt-0">{ordinance.requestedBy || '—'}</dd>
+              </div>
+              <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt className="text-sm font-medium text-zinc-500">Received on</dt>
+                <dd className="mt-1 text-sm text-zinc-900 sm:col-span-2 sm:mt-0">
+                  {ordinance.requestReceivedAt ? formatDate(ordinance.requestReceivedAt) : '—'}
+                </dd>
+              </div>
+              {ordinance.decidedAt && (
+                <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-sm font-medium text-zinc-500">Mayor decided on</dt>
+                  <dd className="mt-1 text-sm text-zinc-900 sm:col-span-2 sm:mt-0">{formatDate(ordinance.decidedAt)}</dd>
+                </div>
+              )}
+              {ordinance.remarks && ordinance.status !== 'declined' && (
+                <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-sm font-medium text-zinc-500">Remarks</dt>
+                  <dd className="mt-1 text-sm text-zinc-900 sm:col-span-2 sm:mt-0">{ordinance.remarks}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+
           <div className="glass-card p-6">
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2">
               <FileText className="h-5 w-5 text-sky-500" /> Executive Summary
@@ -95,16 +146,14 @@ export default async function ViewOrdinancePage({
         </div>
 
         <div className="space-y-6">
+          <OrdinanceActions ordinanceId={ordinance.id} status={ordinance.status} role={session.role} />
+
           <div className="glass-card p-6">
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-4 uppercase tracking-wider">Metadata</h3>
             <div className="space-y-4">
               <div>
                 <p className="text-xs text-zinc-500 mb-1 flex items-center gap-1"><FileSignature className="h-3 w-3"/> Department</p>
                 <p className="text-sm font-medium">{ordinance.department.name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500 mb-1">Approval Authority</p>
-                <p className="text-sm font-medium">{ordinance.approvalAuthority || '—'}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500 mb-1 flex items-center gap-1"><User className="h-3 w-3"/> Created By</p>

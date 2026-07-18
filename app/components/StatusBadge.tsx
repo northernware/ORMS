@@ -11,7 +11,10 @@ const stampByStatus: Record<string, string> = {
   signed: 'stamp--signed',
   not_adopted: 'stamp--not-adopted',
   inactive: 'stamp--archived',
-  // Ordinance statuses
+  // Ordinance statuses (Mayor decides directly; approval = MOA at once)
+  approved: 'stamp--signed',
+  declined: 'stamp--not-adopted',
+  // Departments/users toggles
   active: 'stamp--enacted',
 }
 
@@ -23,6 +26,8 @@ const labelByStatus: Record<string, string> = {
   adopted: 'Adopted',
   signed: 'Signed',
   not_adopted: 'Not Adopted',
+  approved: 'Approved — MOA',
+  declined: 'Declined',
 }
 
 export function StatusBadge({ status }: { status: string }) {
