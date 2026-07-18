@@ -3,50 +3,49 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Role } from '@/types'
-import { Send, Gavel, CheckCircle2, XCircle, Ban, Loader2 } from 'lucide-react'
+import { CalendarPlus, Landmark, FileCheck2, Stamp, PenLine, XCircle, Loader2 } from 'lucide-react'
 
 interface Props {
   resolutionId: number
   status: string
   role: Role
-  hearingsThisCycle: number
+  committees: { id: number; name: string }[]
 }
 
-export function ResolutionActions({ resolutionId, status, role, hearingsThisCycle }: Props) {
+// All lifecycle actions are encoded by SB office staff (or an administrator).
+// SB members, the Vice Mayor, and the Mayor view the register — the actual
+// decisions happen on the session floor and are only recorded here.
+export function ResolutionActions({ resolutionId, status, role, committees }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Hearing form state
-  const [heldAt, setHeldAt] = useState('')
-  const [minutes, setMinutes] = useState('')
-  // Reason for send-back / veto
-  const [reason, setReason] = useState('')
+  const [sessionDate, setSessionDate] = useState('')
+  const [committeeId, setCommitteeId] = useState('')
+  const [hearingHeldAt, setHearingHeldAt] = useState('')
+  const [findings, setFindings] = useState('')
+  const [recommendation, setRecommendation] = useState('')
+  const [remarks, setRemarks] = useState('')
+  const [signedAt, setSignedAt] = useState('')
+  const [notifiedAt, setNotifiedAt] = useState('')
 
   const base = `/api/resolutions/${resolutionId}`
+  const canEncode = role === 'Administrator' || role === 'SB_Staff'
 
-  const canRecordHearings = role === 'Administrator' || role === 'Department_Head'
-  const canViceMayor = role === 'Vice_Mayor' || role === 'Administrator'
-  const canMayor = role === 'Mayor' || role === 'Administrator'
-  const canSubmit = role !== 'Staff'
-
-  async function post(path: string, body?: Record<string, unknown>) {
+  async function post(path: string, body: Record<string, unknown>) {
     setLoading(true)
     setError(null)
     try {
       const res = await fetch(`${base}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body ?? {}),
+        body: JSON.stringify(body),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         setError(data.error || 'Action failed.')
         return
       }
-      setReason('')
-      setHeldAt('')
-      setMinutes('')
       router.refresh()
     } catch {
       setError('Network error.')
@@ -55,92 +54,150 @@ export function ResolutionActions({ resolutionId, status, role, hearingsThisCycl
     }
   }
 
+  const inputClass =
+    'w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm'
+
   const actions: React.ReactNode[] = []
 
-  if ((status === 'draft' || status === 'rejected') && canSubmit) {
+  if (status === 'request_received' && canEncode) {
     actions.push(
-      <button key="submit" disabled={loading} onClick={() => post('/submit')} className="btn-primary w-full justify-center">
-        <Send className="h-4 w-4 mr-2" /> Submit for Hearings
-      </button>
-    )
-  }
-
-  if (status === 'in_hearings' && canRecordHearings) {
-    actions.push(
-      <div key="hearing" className="space-y-3">
-        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Record hearing <span className="text-sky-600">{hearingsThisCycle + 1} of 3</span>
+      <div key="calendar" className="space-y-3">
+        <p className="text-sm font-medium text-zinc-700">
+          Place on the Calendar of Business
         </p>
-        <input
-          type="date"
-          value={heldAt}
-          onChange={(e) => setHeldAt(e.target.value)}
-          className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm"
-        />
-        <textarea
-          value={minutes}
-          onChange={(e) => setMinutes(e.target.value)}
-          placeholder="Minutes / notes (optional)"
-          rows={3}
-          className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm"
-        />
+        <label className="block text-xs text-zinc-500">
+          Regular session date
+          <input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className={`${inputClass} mt-1`} />
+        </label>
         <button
-          disabled={loading}
-          onClick={() => post('/hearings', { heldAt: heldAt || null, minutes: minutes || null })}
+          disabled={loading || !sessionDate}
+          onClick={() => post('/calendar', { sessionDate })}
           className="btn-primary w-full justify-center"
         >
-          <Gavel className="h-4 w-4 mr-2" /> Record Hearing
+          <CalendarPlus className="h-4 w-4 mr-2" /> Calendar for Session
         </button>
-        {hearingsThisCycle === 2 && (
-          <p className="text-xs text-amber-600">This is the final hearing — it will advance to the Vice Mayor.</p>
-        )}
       </div>
     )
   }
 
-  if (status === 'pending_vice_mayor' && canViceMayor) {
+  if (status === 'calendared' && canEncode) {
     actions.push(
-      <div key="vm" className="space-y-3">
-        <button disabled={loading} onClick={() => post('/vice-mayor/approve')} className="btn-primary w-full justify-center">
-          <CheckCircle2 className="h-4 w-4 mr-2" /> Vice Mayor: Approve
+      <div key="refer" className="space-y-3">
+        <p className="text-sm font-medium text-zinc-700">
+          Refer to standing committee <span className="text-zinc-400">(done in regular session)</span>
+        </p>
+        <select value={committeeId} onChange={(e) => setCommitteeId(e.target.value)} className={inputClass}>
+          <option value="">Select committee…</option>
+          {committees.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <button
+          disabled={loading || !committeeId}
+          onClick={() => post('/refer', { committeeId: Number(committeeId) })}
+          className="btn-primary w-full justify-center"
+        >
+          <Landmark className="h-4 w-4 mr-2" /> Record Referral
         </button>
+      </div>
+    )
+  }
+
+  if (status === 'in_committee' && canEncode) {
+    actions.push(
+      <div key="report" className="space-y-3">
+        <p className="text-sm font-medium text-zinc-700">Submit committee report</p>
+        <label className="block text-xs text-zinc-500">
+          Committee hearing date
+          <input type="date" value={hearingHeldAt} onChange={(e) => setHearingHeldAt(e.target.value)} className={`${inputClass} mt-1`} />
+        </label>
         <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason for sending back (optional)"
+          value={findings}
+          onChange={(e) => setFindings(e.target.value)}
+          placeholder="Findings (optional)"
+          rows={3}
+          className={inputClass}
+        />
+        <textarea
+          value={recommendation}
+          onChange={(e) => setRecommendation(e.target.value)}
+          placeholder="Recommendation (required)"
           rows={2}
-          className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm"
+          className={inputClass}
+        />
+        <label className="block text-xs text-zinc-500">
+          Adoption session date (back on the Calendar of Business)
+          <input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className={`${inputClass} mt-1`} />
+        </label>
+        <button
+          disabled={loading || !recommendation || !sessionDate}
+          onClick={() =>
+            post('/committee-report', {
+              findings: findings || null,
+              recommendation,
+              hearingHeldAt: hearingHeldAt || null,
+              sessionDate,
+            })
+          }
+          className="btn-primary w-full justify-center"
+        >
+          <FileCheck2 className="h-4 w-4 mr-2" /> Record Report — For Adoption
+        </button>
+      </div>
+    )
+  }
+
+  if (status === 'for_adoption' && canEncode) {
+    actions.push(
+      <div key="adoption" className="space-y-3">
+        <p className="text-sm font-medium text-zinc-700">
+          Record the session outcome <span className="text-zinc-400">(vote by the whole SB)</span>
+        </p>
+        <textarea
+          value={remarks}
+          onChange={(e) => setRemarks(e.target.value)}
+          placeholder="Remarks (optional)"
+          rows={2}
+          className={inputClass}
         />
         <button
           disabled={loading}
-          onClick={() => post('/vice-mayor/reject', { reason: reason || null })}
+          onClick={() => post('/adoption', { outcome: 'adopted', remarks: remarks || null })}
+          className="btn-primary w-full justify-center"
+        >
+          <Stamp className="h-4 w-4 mr-2" /> Adopted by the SB
+        </button>
+        <button
+          disabled={loading}
+          onClick={() => post('/adoption', { outcome: 'not_adopted', remarks: remarks || null })}
           className="btn-secondary w-full justify-center text-red-600"
         >
-          <XCircle className="h-4 w-4 mr-2" /> Send Back for Revision
+          <XCircle className="h-4 w-4 mr-2" /> Not Adopted (Final)
         </button>
       </div>
     )
   }
 
-  if (status === 'pending_mayor' && canMayor) {
+  if (status === 'adopted' && canEncode) {
     actions.push(
-      <div key="mayor" className="space-y-3">
-        <button disabled={loading} onClick={() => post('/mayor/approve')} className="btn-primary w-full justify-center">
-          <CheckCircle2 className="h-4 w-4 mr-2" /> Mayor: Approve (Enact)
-        </button>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason for veto (optional)"
-          rows={2}
-          className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm"
-        />
+      <div key="sign" className="space-y-3">
+        <p className="text-sm font-medium text-zinc-700">Record the Mayor&apos;s signature</p>
+        <label className="block text-xs text-zinc-500">
+          Date signed
+          <input type="date" value={signedAt} onChange={(e) => setSignedAt(e.target.value)} className={`${inputClass} mt-1`} />
+        </label>
+        <label className="block text-xs text-zinc-500">
+          Requester notified on
+          <input type="date" value={notifiedAt} onChange={(e) => setNotifiedAt(e.target.value)} className={`${inputClass} mt-1`} />
+        </label>
         <button
           disabled={loading}
-          onClick={() => post('/mayor/veto', { reason: reason || null })}
-          className="btn-secondary w-full justify-center text-rose-600"
+          onClick={() =>
+            post('/sign', { signedAt: signedAt || null, requesterNotifiedAt: notifiedAt || null })
+          }
+          className="btn-primary w-full justify-center"
         >
-          <Ban className="h-4 w-4 mr-2" /> Veto (Final)
+          <PenLine className="h-4 w-4 mr-2" /> Record Signature
         </button>
       </div>
     )
@@ -148,7 +205,7 @@ export function ResolutionActions({ resolutionId, status, role, hearingsThisCycl
 
   return (
     <div className="glass-card p-6">
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-4 uppercase tracking-wider">Actions</h3>
+      <h3 className="text-sm font-semibold text-zinc-900 mb-4 uppercase tracking-wider">Actions</h3>
       {actions.length > 0 ? (
         <div className="space-y-4">
           {actions}
@@ -160,7 +217,11 @@ export function ResolutionActions({ resolutionId, status, role, hearingsThisCycl
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       ) : (
-        <p className="text-sm text-zinc-500">No actions available for your role at this stage.</p>
+        <p className="text-sm text-zinc-500">
+          {canEncode
+            ? 'No further action — this record is closed.'
+            : 'View only — the SB office records all actions on this register.'}
+        </p>
       )}
     </div>
   )
