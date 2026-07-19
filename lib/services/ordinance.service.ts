@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/utils/audit'
-import { canManageOrdinances } from '@/lib/utils/permissions'
+import { canManageOrdinances, canViewAllOrdinances } from '@/lib/utils/permissions'
 import type { OrdinanceStatus, PaginatedResponse, UserContext } from '@/types'
 
 export interface OrdinanceFilters {
@@ -18,10 +18,10 @@ export const OrdinanceService = {
     const { year, departmentId, status, search, page = 1, perPage = 15 } = filters
     const skip = (page - 1) * perPage
 
-    const isAdmin = user.role === 'Administrator'
+    const viewAll = canViewAllOrdinances(user)
     const where: Prisma.OrdinanceWhereInput = {}
 
-    if (!isAdmin) {
+    if (!viewAll) {
       if (user.departmentId) {
         where.departmentId = user.departmentId
       } else {
@@ -30,7 +30,7 @@ export const OrdinanceService = {
     }
 
     if (year) where.year = year
-    if (departmentId && (isAdmin || departmentId === user.departmentId)) {
+    if (departmentId && (viewAll || departmentId === user.departmentId)) {
       where.departmentId = departmentId
     }
     if (status) where.status = status
@@ -91,8 +91,7 @@ export const OrdinanceService = {
 
     if (!ordinance) return null
 
-    const isAdmin = user.role === 'Administrator'
-    if (!isAdmin) {
+    if (!canViewAllOrdinances(user)) {
       if (user.departmentId && ordinance.departmentId !== user.departmentId && ordinance.createdBy !== user.id) {
         throw new Error('FORBIDDEN')
       }

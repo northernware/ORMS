@@ -5,6 +5,7 @@ import { DataTable, DataTableRow, DataTableCell } from '@/app/components/DataTab
 import { StatusBadge } from '@/app/components/StatusBadge'
 import { SearchFilter } from '@/app/components/SearchFilter'
 import { formatDate } from '@/lib/utils/format'
+import { canManageResolutions } from '@/lib/utils/permissions'
 import Link from 'next/link'
 import { Plus, Eye } from 'lucide-react'
 import { redirect } from 'next/navigation'
@@ -34,10 +35,12 @@ export default async function ResolutionsPage({
         </div>
         <div className="flex items-center gap-3">
           <SearchFilter placeholder="Search resolutions..." />
-          <Link href="/admin/resolutions/create" className="btn-primary flex-shrink-0">
-            <Plus className="h-4 w-4 mr-2" />
-            Receive Request
-          </Link>
+          {canManageResolutions(session) && (
+            <Link href="/admin/resolutions/create" className="btn-primary flex-shrink-0">
+              <Plus className="h-4 w-4 mr-2" />
+              Receive Request
+            </Link>
+          )}
         </div>
       </div>
 

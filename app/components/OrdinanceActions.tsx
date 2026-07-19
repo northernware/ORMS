@@ -20,7 +20,7 @@ export function OrdinanceActions({ ordinanceId, status, role }: Props) {
   const [decidedAt, setDecidedAt] = useState('')
   const [remarks, setRemarks] = useState('')
 
-  const canEncode = role === 'Administrator' || role === 'Department_Head'
+  const canEncode = role === 'Administrator' || role === 'SB_Staff' || role === 'Department_Head'
 
   async function decide(decision: 'approved' | 'declined') {
     setLoading(true)
