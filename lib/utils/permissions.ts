@@ -1,7 +1,22 @@
 import type { Role, UserContext } from '@/types'
 
+// Ordinance requests come from anyone in the municipality; office staff
+// (SB_Staff) and department heads encode them and record the Mayor's
+// decision. Department heads are scoped to their own department's requests.
 export function canManageOrdinances(user: UserContext) {
-  return user.role === 'Administrator' || user.role === 'Department_Head'
+  return user.role === 'Administrator' || user.role === 'SB_Staff' || user.role === 'Department_Head'
+}
+
+// Mirrors view_all_ordinances in getPermissions: office staff, SB members,
+// and both executives see the full ordinance register.
+export function canViewAllOrdinances(user: UserContext) {
+  return (
+    user.role === 'Administrator' ||
+    user.role === 'SB_Staff' ||
+    user.role === 'SB_Member' ||
+    user.role === 'Vice_Mayor' ||
+    user.role === 'Mayor'
+  )
 }
 
 // SB office staff encode resolutions end to end — intake, calendaring,
@@ -52,6 +67,7 @@ export function getPermissions(user: UserContext): string[] {
       return [
         'view_all_resolutions', 'create_resolutions', 'edit_resolutions',
         'record_resolution_flow', 'manage_documents', 'view_all_ordinances',
+        'create_ordinances', 'edit_ordinances', 'record_ordinance_decision',
       ]
     case 'SB_Member':
     case 'Vice_Mayor':
