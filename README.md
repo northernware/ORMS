@@ -95,3 +95,5 @@ The application features a built-in authentication system without relying on thi
 - `npm run start`: Starts the production server using the build output.
 - `npm run lint`: Runs ESLint to find and fix problems in the code.
 - `npx prisma studio`: Opens a visual editor in your browser to view and edit database records.
+
+<!-- Vercel Trigger 20260831063339 -->
